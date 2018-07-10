@@ -2,6 +2,10 @@
 	xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd"
 	version="2.0">
 	<persistence-unit name="com.jege.jpa" transaction-type="RESOURCE_LOCAL">
+
+		<class>com.roy.jpademo.dao.many2dao.Order</class>
+		<class>com.roy.jpademo.dao.many2dao.Customer</class>
+
 		<properties>
 			<!--数据库的基本配置-->
 			<property name="javax.persistence.jdbc.driver" value="com.mysql.jdbc.Driver"/>
