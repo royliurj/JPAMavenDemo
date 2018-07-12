@@ -355,5 +355,288 @@ saveOrUpdate
 ```
 
 ### 双向多对多  
-1. 必须由一方放弃关联关系
-2. 
+必须由一方放弃关联关系  
+示例：Item表和Category表的多对多管理, Category放弃关联关系，Item负责关联关系
+1. 查询时不管先查询哪个类，执行的sql都一样
+2. 插入时，只有负责关联关系的表添加子数据时，中间表才能插入成功
+```
+    /** Item表
+     * 使用ManyToMany映射多对多的关联关系
+     * 使用JoinTable映射中间表
+     * 1，name指向中间表的名字
+     * 2，joinColumns 映射当前类所在的表在中间表的外键
+     *    name：指定外键列的列名
+     *    referencedColumnName：指定外键列关联当前表的哪一列
+     * 3，inverseJoinColumns 映射关联的类坐在中间表的外键
+     */
+    @ManyToMany
+    @JoinTable(name = "ITEM_CATEGORY",joinColumns = {@JoinColumn(name = "ITEM_ID", referencedColumnName = "ID")},
+            inverseJoinColumns = {@JoinColumn(name = "CATEGORY_ID",referencedColumnName = "ID")})
+    public Set<Category> getCategories() {
+        return categories;
+    }
+    
+    /**
+    * Category表
+    */
+    @ManyToMany(mappedBy = "categories")
+    private Set<Item> items = new HashSet<Item>();
+```
+
+# 二级缓存
+一级缓存：在同一个entityManager
+```
+    //连续执行两个获取Customer的方法，只发送一条sql语句
+    Customer customer = entityManager.find(Customer.class,1);
+    Customer customer = entityManager.find(Customer.class,1);
+```
+二级缓存：利用Hibernate的二级缓存（待实践）
+
+
+# JPQL
+JPA查询语言
+
+1. 返回全部数据集合
+```
+    @Test
+    public void testJPQLHello(){
+        String jpql = "select c from Customer c where c.email = ?";
+
+        Query query = entityManager.createQuery(jpql);
+        query.setParameter(1,"email2");
+
+        List<Customer> customers = query.getResultList();
+        System.out.println(customers.size());
+
+        for (Customer c:customers) {
+            System.out.println(c);
+        }
+    }
+```
+2. 返回部分属性集合  
+默认返回Object[]类型的结果或者Object[]的List  
+可以直接在JPQL中返回实体对象
+```
+    @Test
+    public void testJPQLPartlyProperties(){
+        String jpql = "select new Customer(c.id, c.email) from Customer c";
+
+        List result = entityManager.createQuery(jpql).getResultList();
+
+        System.out.println(result);
+    }
+```
+3. createNamedQuery  
+先添加注解并命名，在调用createNamedQuery并传入参数，此例调用getSingleResult返回仅有的一个对象。
+```
+@NamedQuery(name = "testNamedQuery",query = "SELECT c FROM Customer c where id = ?")
+@Entity
+@Table(name = "JPA_Customer")
+public class Customer {
+}
+
+    @Test
+    public void testJPQLNamedQuery(){
+        Query query = entityManager.createNamedQuery("testNamedQuery").setParameter(1,1);
+        Customer result = (Customer) query.getSingleResult();
+        System.out.println(result);
+    }
+```
+4. createNativeQuery  
+调用本地Sql脚本
+```
+    @Test
+    public void testJPQLNativeQuery(){
+        String sql = "select name from jpa_customer where id = ?";
+        Query query = entityManager.createNativeQuery(sql).setParameter(1,1);
+
+        Object result = query.getSingleResult();
+        System.out.println(result);
+    }
+```
+5. 查询缓存  
+先启用查询缓存<property name="hibernate.cache.use_query_cache" value="true"/>，在为Query设置setHint(QueryHints.HINT_CACHEABLE,true)
+```
+    @Test
+    public void testJPQLQueryCache(){
+
+        String jpql = "select new Customer(c.id, c.email) from Customer c";
+        Query query = entityManager.createQuery(jpql).setHint(org.hibernate.jpa.QueryHints.HINT_CACHEABLE,true);
+
+        List result = query.getResultList();
+
+        System.out.println(result);
+        query = entityManager.createQuery(jpql).setHint(QueryHints.HINT_CACHEABLE,true);
+        result = query.getResultList();
+
+        System.out.println(result);
+    }
+```
+6. OrderBy、GroupBy  
+String jpql = "select new Customer(c.id, c.email) from Customer c order by c.id desc";
+
+7. 关联查询  
+如果两个表进行了关联，并且设置了懒加载方式。下面的方法会执行两条语句获取相关的信息（懒加载模式）  
+```
+    @Test
+    public void test123(){
+        String jpql = "select c from Customer c where id = ?";
+        Query query = entityManager.createQuery(jpql);
+        Customer customer = (Customer) query.setParameter(1,1).getSingleResult();
+
+        System.out.println(customer);
+        System.out.println(customer.getOrders());
+    }
+```
+如果想用一条sql语句获取的话，需要使用关联查询
+```
+    String jpql = "select c from Customer c left outer join fetch c.orders where c.id = ?";
+```
+8. 子查询和内建函数
+ - 子查询
+ ```
+     /**
+     * 查询所有Id=1的Customer的Order
+     */
+    @Test
+    public void testSubQuery(){
+        String jpql = "select o from Order o where o.customer = (select c from Customer c where c.id = ?)";
+        Query query = entityManager.createQuery(jpql);
+        List<Order> orders = query.setParameter(1,1).getResultList();
+
+        System.out.println(orders);
+    }
+ ```
+ - 内建函数
+ ```
+     @Test
+    public void testJQPLFunction(){
+        String jpql = "select upper(c.email) from Customer c where c.id = ?";
+        Query query = entityManager.createQuery(jpql);
+        String email = (String) query.setParameter(1,1).getSingleResult();
+
+        System.out.println(email);
+    }
+ ```
+9. DELETE和UPDATE
+```
+    @Test
+    public void testJPQLExecuteUpdate(){
+        String jpql = "update Customer c set c.email = ? Where c.id = ?";
+        Query query = entityManager.createQuery(jpql);
+        query.setParameter(1,"1232@123.com").setParameter(2,1).executeUpdate();
+
+        System.out.println("success");
+    }
+```
+
+# Spring整合JPA
+整合方式：LocalContainerEntityManagerFactoryBean，适用于所有环境的FactoryBean，能全面控制EntityManagerFactory配置，如果指定Spring定义的DataSource等等  
+1. 添加必备的包  
+2. Spring配置文件，配置JPA相关的内容
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+            http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+    <!--配置自动扫描的包-->
+    <context:component-scan base-package="com.roy.jpademo.springjpa"/>
+
+    <!--配置c3p0数据源-->
+    <!--导入外部资源文件-->
+    <context:property-placeholder location="classpath:db.properties"/>
+
+    <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+        <property name="user" value="${jdbc.user}"></property>
+        <property name="password" value="${jdbc.password}"></property>
+        <property name="jdbcUrl" value="${jdbc.jdbcUrl}"></property>
+        <property name="driverClass" value="${jdbc.driverClass}"></property>
+        <property name="maxPoolSize" value="${jdbc.maxPoolSize}"></property>
+        <property name="initialPoolSize" value="${jdbc.initPoolSize}"></property>
+    </bean>
+
+
+    <!--配置EntityManagerFactory-->
+    <bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+        <property name="dataSource" ref="dataSource"></property>
+        <!--配置JPA提供者的适配器,可以通过内部bean的方式来配置-->
+        <property name="jpaVendorAdapter">
+            <bean class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter"></bean>
+        </property>
+        <!--配置实体类所在的包-->
+        <property name="packagesToScan" value="com.roy.jpademo.springjpa.entities"></property>
+        <!--配置JPA的基本属性，例如JPA的实现产品等-->
+        <property name="jpaProperties">
+            <props>
+                <prop key="hibernate.format_sql">true</prop>
+                <prop key="hibernate.show_sql">true</prop>
+                <prop key="hibernate.hbm2ddl.auto">update</prop>
+                <prop key="hibernate.dialect">org.hibernate.dialect.MySQL5Dialect</prop>
+            </props>
+        </property>
+    </bean>
+
+    <!--配置JPA使用的事务管理器-->
+    <bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+        <property name="entityManagerFactory" ref="entityManagerFactory"></property>
+    </bean>
+
+    <!--配置支持基于注解的事务配置-->
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+</beans>
+```
+3. 编写代码
+```
+    //Dao
+    @Repository
+    public class PersonDao {
+
+        //如何获取到和当前事务关联的EntityManager对象呢
+        //通过PersistenceContext标记成员变量
+        @PersistenceContext
+        private EntityManager entityManager;
+        public void save(Person person){
+            entityManager.persist(person);
+        }
+    }
+    
+    //Service
+    @Service
+    public class PersonService {
+
+        @Autowired
+        private PersonDao personDao;
+
+        @Transactional
+        public void savePsersons(Person p1, Person p2){
+            personDao.save(p1);
+
+            int i = 10/0;
+            personDao.save(p2);
+        }
+    }
+    
+    //测试代码
+    private ApplicationContext ctx = null;
+    private PersonService personService = null;
+
+    {
+        ctx = new ClassPathXmlApplicationContext("spring-config.xml");
+        personService = ctx.getBean(PersonService.class);
+    }
+    @Test
+    public void testSavePersons(){
+        Person p1 = new Person();
+        p1.setName("111");
+
+        Person p2 = new Person();
+        p2.setName("222");
+
+        personService.savePsersons(p1,p2);
+    }
+```
