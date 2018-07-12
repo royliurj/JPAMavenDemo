@@ -3,8 +3,12 @@
 	version="2.0">
 	<persistence-unit name="com.jege.jpa" transaction-type="RESOURCE_LOCAL">
 
+
 		<class>com.roy.jpademo.dao.many2dao.Order</class>
 		<class>com.roy.jpademo.dao.many2dao.Customer</class>
+
+		<!--&lt;!&ndash;配置二级缓存的策略&ndash;&gt;-->
+		<!--<shared-cache-mode>ENABLE_SELECTIVE</shared-cache-mode>-->
 
 		<properties>
 			<!--数据库的基本配置-->
@@ -17,6 +21,12 @@
 			<property name="hibernate.show_sql" value="true"/>
 			<property name="hibernate.hbm2ddl.auto" value="update"/>
 			<property name="hibernate.dialect" value="org.hibernate.dialect.MySQL5Dialect" />
+
+
+			<!--&lt;!&ndash;二级缓存相关&ndash;&gt;-->
+			<!--<property name="hibernate.cache.user_second_level_cache" value="true"/>-->
+			<!--<property name="hibernate.cache.region.factory_class" value="org.hibernate.cache.ehcache.internal.EhcacheRegionFactory"/>-->
+			<!--<property name="hibernate.cache.use_query_cache" value="true"/>-->
 		</properties>
 	</persistence-unit>
 </persistence>

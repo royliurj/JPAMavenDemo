@@ -7,13 +7,15 @@ import java.util.Set;
 @Entity
 @Table(name = "JPA_Category")
 public class Category {
-
-    private Integer id;
-    private String categoryName;
-    private Set<Item> items = new HashSet<Item>();
-
     @Id
     @GeneratedValue
+    private Integer id;
+    @Column(name = "CATEGORY_NAME")
+    private String categoryName;
+    @ManyToMany(mappedBy = "categories")
+    private Set<Item> items = new HashSet<Item>();
+
+
     public Integer getId() {
         return id;
     }
@@ -22,7 +24,7 @@ public class Category {
         this.id = id;
     }
 
-    @Column(name = "CATEGORY_NAME")
+
     public String getCategoryName() {
         return categoryName;
     }
@@ -31,7 +33,7 @@ public class Category {
         this.categoryName = categoryName;
     }
 
-    @ManyToMany
+
     public Set<Item> getItems() {
         return items;
     }

@@ -4,6 +4,7 @@ import javax.persistence.*;
 import java.util.HashSet;
 import java.util.Set;
 
+@NamedQuery(name = "testNamedQuery",query = "SELECT c FROM Customer c where id = ?")
 @Entity
 @Table(name = "JPA_Customer")
 public class Customer {
@@ -59,7 +60,7 @@ public class Customer {
     /**
      *使用OneToMany映射单向一对多的关系
      */
-    @OneToMany(fetch = FetchType.EAGER,cascade = {CascadeType.REMOVE}, mappedBy = "customer")
+    @OneToMany(fetch = FetchType.LAZY,cascade = {CascadeType.REMOVE}, mappedBy = "customer")
     //@JoinColumn(name = "CUSTOMER_ID")
     public Set<Order> getOrders() {
         return orders;
@@ -67,5 +68,20 @@ public class Customer {
 
     public void setOrders(Set<Order> orders) {
         this.orders = orders;
+    }
+
+    @Override
+    public String toString() {
+        return "Customer{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", lastName='" + lastName + '\'' +
+                ", email='" + email + '\'' +
+                '}';
+    }
+
+    public Customer(int id, String email) {
+        this.id = id;
+        this.email = email;
     }
 }
